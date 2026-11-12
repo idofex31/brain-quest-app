@@ -3,7 +3,7 @@
 A learning app for kids (ages ~5 and ~8): math, reading, science and geography,
 with quizzes, interactive world/US maps, stars, levels and badges.
 
-Current version: v1.10.
+Current version: v1.11.
 
 - `index.html` – the complete app (open it in a browser). This is the published version.
 - `src.html` – the same app without the embedded map data (easier to read/edit).

@@ -382,17 +382,8 @@ let actx=null;
 function tone(freqs,dur=.12,type='sine',vol=.18){try{if(cur.pid&&P(cur.pid)&&prog(cur.pid).set.sfx===false)return;actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();
   let t=actx.currentTime;for(const f of freqs){const o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur*1.6);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur*1.7);t+=dur;}}catch(e){}}
 const sfx={ok:()=>tone([660,880,1320],.09),bad:()=>tone([220,180],.14,'triangle',.15),tap:()=>tone([520],.05,'sine',.08),win:()=>tone([523,659,784,1047,1319],.11)};
-let ttsCap=null, speaking=false, sayId=0;
-function stopSpeech(){try{if(ttsCap)ttsCap.stop();}catch(e){} try{speechSynthesis.cancel();}catch(e){}}
-function say(text){ if(!text)return; sayId++; stopSpeech(); const p=cur.pid&&P(cur.pid); if(p&&prog(p.id).set.voice===false)return; const rate=(p&&young(p)?.85:.95)*(p?(prog(p.id).set.rate||1):1);
-  if(ttsCap){const sid=++sayId;ttsCap.speak(String(text),{rate:rate*.95,voice:'buttery',language:'en'}).catch(e=>{if(sid===sayId&&e&&/not_granted|unsupported|failed|error/i.test(String(e.code||'')))sayLocal(text,rate);});return;}
-  sayLocal(text,rate);}
-function bestVoice(){const all=speechSynthesis.getVoices().filter(v=>/^en[-_](US|GB|AU|CA)/i.test(v.lang));if(!all.length)return null;
-  const bad=/Compact|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Fred|Good News|Hysterical|Junior|Kathy|Organ|Princess|Ralph|Trinoids|Whisper|Zarvox|Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|Superstar|Wobble|Jester|Daniel|Alex|Rishi|Aaron|Arthur|Gordon|Evan|Nathan|Tom|Oliver/i;
-  const rank=v=>{let r=0;if(/Premium/i.test(v.name))r+=60;if(/Enhanced/i.test(v.name))r+=45;if(/Siri/i.test(v.name))r+=40;if(/Natural|Neural|Online/i.test(v.name))r+=35;if(/Samantha|Ava|Allison|Susan|Zoe|Joelle|Nicky|Karen|Moira|Serena|Stephanie|Tessa|Libby|Sonia|Jenny|Aria/i.test(v.name))r+=30;if(/Google US/i.test(v.name))r+=10;if(/en[-_]US/i.test(v.lang))r+=5;if(bad.test(v.name))r-=100;if(v.localService===false)r+=2;return r;};
-  return all.slice().sort((a,b)=>rank(b)-rank(a))[0];}
-function sayLocal(text,rate){try{const u=new SpeechSynthesisUtterance(String(text));u.rate=Math.min(rate,1)*.94;u.pitch=1.02;u.volume=.9;u.lang='en-US';const pref=bestVoice();if(pref){u.voice=pref;u.lang=pref.lang;}speechSynthesis.speak(u);}catch(e){}}
-try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}catch(e){}
+// Speech is switched off: the app no longer talks. The speaker buttons stay in place but make no sound.
+const say=()=>{},stopSpeech=()=>{};
 
 // ---------- celebration ----------
 function confetti(n=90){const c=document.createElement('div');c.className='confetti';const cols=['#FF7A59','#4C8DFF','#2BB673','#A35DFF','#FFB020','#FF5C8A','#19B5C9'];
@@ -464,7 +455,7 @@ letters:d=>{const [w,e]=pick(LETTER_W);const L=w[0].toUpperCase();const pool='AB
 rhymeY:d=>{const r=pick(RHYMES);const right=pick(r.slice(2));const others=sample(RHYMES.filter(x=>x!==r),2).map(x=>C(x[0],x[1]));
   return mk(`Which word rhymes with ${r[0]}?`,`<div style="font-size:110px">${r[1]}</div>`,C(right[0],right[1]),others,{say:`Which word rhymes with ${r[0]}? ${shuffle([right[0],...others.map(o=>o.l)]).join('... ')}`});},
 sight:d=>{const lvl=SIGHT[clamp(d,1,3)-1];const w=pick(lvl);const others=sample(lvl.filter(x=>x!==w&&x.toLowerCase()!==w.toLowerCase()),2);
-  return mk(`Tap the word you hear!`,`<div style="font-size:90px">👂</div>`,C(w),others.map(x=>C(x)),{say:`Find the word: ${w}. ... ${w}.`});},
+  return mk(`Find the word "${w}"`,`<div style="font-size:90px">👀</div>`,C(w),others.map(x=>C(x)),{say:`Find the word: ${w}. ... ${w}.`});},
 spelling:d=>{const lvl=SPELL[clamp(d,1,4)-1];const w=pick(lvl);const wr=new Set();let t=0;while(wr.size<3&&t<40){const m=misspell(w);if(m!==w)wr.add(m);t++;}
   return mk(`Which spelling is correct?`,`<div style="font-size:80px">✏️</div>`,C(w),[...wr].map(x=>C(x)),{say:`Which is the right way to spell: ${w}?`});},
 opposites:d=>{const pool=d<=2?OPPOS.slice(0,20):OPPOS;const pr=pick(pool);const [w,o]=Math.random()<.5?pr:[pr[1],pr[0]];const others=sample(pool.filter(x=>x!==pr).flat(),3);
@@ -532,11 +523,11 @@ const ACTS=[
  {id:'word',s:'math',age:'b',name:'Story Problems',ic:'📖',ds:'Math in real life'},
  {id:'letters',s:'read',age:'y',name:'First Letters',ic:'🔤',ds:'What sound does it start with?'},
  {id:'rhymeY',s:'read',age:'y',name:'Rhyme Time',ic:'🎵',ds:'Words that sound alike'},
- {id:'sight',s:'read',age:'y',name:'Sight Words',ic:'👀',ds:'Listen and find the word'},
+ {id:'sight',s:'read',age:'y',name:'Sight Words',ic:'👀',ds:'Spot the word'},
  {id:'spelling',s:'read',age:'b',name:'Spelling Bee',ic:'🐝',ds:'Pick the right spelling'},
  {id:'opposites',s:'read',age:'b',name:'Opposites',ic:'↔️',ds:'Hot and cold, up and down'},
  {id:'homophones',s:'read',age:'b',name:'Tricky Words',ic:'🤔',ds:'to, two, too & more'},
- {id:'sight',s:'read',age:'b',name:'Word Hunt',ic:'👀',ds:'Listen and find the word'},
+ {id:'sight',s:'read',age:'b',name:'Word Hunt',ic:'👀',ds:'Spot the word'},
  {id:'homes',s:'sci',age:'y',name:'Animal Homes',ic:'🏡',ds:'Where do animals live?'},
  {id:'babies',s:'sci',age:'y',name:'Baby Animals',ic:'🐣',ds:'What are babies called?'},
  {id:'sounds',s:'sci',age:'y',name:'Animal Sounds',ic:'🔊',ds:'Who says that?'},
@@ -577,7 +568,7 @@ function rPick(){app.innerHTML=`<div class="picker">
   <div class="logo">🧠<span class="spark">✨</span><br><span style="color:var(--orange)">Brain</span> <span style="color:var(--blue)">Quest</span></div>
   <div class="sub" style="font-size:26px">Who's playing today?</div>
   <div class="kids">${S.profiles.map(p=>{const g=prog(p.id);return`<button class="kid chunky" data-k="${p.id}">${avatar(p)}<div class="nm">${esc(p.name)}</div><div class="st"><span>⭐ ${bal(g)}</span>${streakInfo(g).count?`<span>🔥 ${streakInfo(g).count} day${streakInfo(g).count===1?'':'s'}</span>`:''}</div></button>`}).join('')}</div>
-  <button class="btn ghost" id="parent" style="font-size:18px;min-height:50px">⚙️ Grown-ups</button><div class="ver">Brain Quest Adventures · v1.10</div></div>`;
+  <button class="btn ghost" id="parent" style="font-size:18px;min-height:50px">⚙️ Grown-ups</button><div class="ver">Brain Quest Adventures · v1.11</div></div>`;
   app.querySelectorAll('.kid').forEach(b=>b.onclick=()=>{sfx.tap();const p=P(b.dataset.k);go({screen:'home',pid:p.id});say(`Hi ${p.name}! What do you want to learn today?`);});
   $('#parent').onclick=parentGate;}
 
@@ -614,8 +605,7 @@ function rQuiz(){const p=P(cur.pid),q=R.q,s=subjOf(R.a.s);const k=q.ch.length;co
   $('#spk').onclick=()=>say(q.say);
   if(young(p))setTimeout(()=>{if(cur.screen==='quiz'&&R.q===q)say(q.say);},250);
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(+b.dataset.i,b));
-  // read choices aloud on long-press for little kids
-  if(young(p))app.querySelectorAll('.choice').forEach(b=>{let t;b.addEventListener('touchstart',()=>{t=setTimeout(()=>{const c=q.ch[+b.dataset.i];if(c.l)say(c.l);},450);},{passive:true});b.addEventListener('touchend',()=>clearTimeout(t));});}
+}
 const PRAISE=['Great job!','Awesome!','You got it!','Super!','Way to go!','Nice!','Brilliant!','Yes!'];
 function answer(i,el){if(R.lock)return;const q=R.q,fb=$('#fb');
   if(i===q.a){R.lock=true;el.classList.add('ok');sfx.ok();if(R.tries===0){R.correct++;R.run=(R.run||0)+1;award(el);recAcc(q.act,true);if(q.fk)prog(cur.pid).flagOK[q.fk]=1;}else R.run=0;
@@ -719,7 +709,7 @@ function parentGate(){const a=3+rnd(7),b=3+rnd(7);const m=modal(`<h2 style="font
 function parentPanel(){const draft=JSON.parse(JSON.stringify(S.profiles));
   const m=modal('');const draw=()=>{m.querySelector('.sheet').innerHTML=`<div class="row"><h2 style="font-size:30px;flex:1">⚙️ Settings</h2><button class="btn ghost" id="prep" style="min-height:50px;font-size:18px">📊 Progress report</button><button class="iconbtn" id="px">✖️</button></div>
    ${draft.map((p,ix)=>{const g=prog(p.id);return`<div class="kidedit"><div class="field"><label>Name</label><input data-n="${ix}" value="${esc(p.name)}" maxlength="18"></div>
-    <div class="field"><label>Age (5 and 6 get pictures + read-aloud; 7+ get harder games)</label><div class="stepper"><button class="iconbtn" data-am="${ix}">−</button><span>${p.age}</span><button class="iconbtn" data-ap="${ix}">+</button></div></div>
+    <div class="field"><label>Age (5 and 6 get pictures and easier games; 7+ get harder games)</label><div class="stepper"><button class="iconbtn" data-am="${ix}">−</button><span>${p.age}</span><button class="iconbtn" data-ap="${ix}">+</button></div></div>
     <div class="field"><label>Avatar</label><div class="avpick">${AVATARS.map(a=>`<button data-av="${ix}" data-a="${a}" class="${a===p.avatar?'sel':''}">${a}</button>`).join('')}</div></div>
     ${kidSettings(p,ix)}
     <div class="row"><span class="note" style="flex:1">⭐ ${g.stars} earned · ${bal(g)} to spend · ${g.rounds} rounds played · ${g.badges.length} badges</span><button class="btn ghost" style="min-height:46px;font-size:16px" data-reset="${ix}">Reset progress</button></div></div>`}).join('')}
@@ -909,10 +899,10 @@ function gSpell(){const p=P(cur.pid),yg=young(p);const n=5;const me=GM;let words
   else{const lvl=SPELL[clamp(me.d,1,SPELL.length)-1];words=sample(lvl,n).map(w=>({w,e:''}));}
   me.idx=0;me.wrong=0;
   const draw=()=>{const {w,e}=words[me.idx];me.pos=0;me.lock=false;const L=w.toUpperCase().split('');const tiles=shuffle(L.map(c=>({c})));
-    app.innerHTML=gTop(`${me.idx+1}/${n}`,me.idx/n*100)+`<div class="qcard chunky"><div class="prompt"><button class="speak" id="spk">🔊</button><span>${e?'Spell this word!':'Spell the word you hear!'}</span></div>${e?`<div class="visual"><div style="font-size:110px">${e}</div></div>`:''}</div>
+    app.innerHTML=gTop(`${me.idx+1}/${n}`,me.idx/n*100)+`<div class="qcard chunky"><div class="prompt"><button class="speak" id="spk">🔊</button><span>${e?'Spell this word!':'Look at the word, then spell it!'}</span></div>${e?`<div class="visual"><div style="font-size:110px">${e}</div></div>`:`<div class="visual"><div id="wd" style="font-size:84px;font-weight:700;letter-spacing:8px">${w.toUpperCase()}</div><button class="btn ghost" id="peek" style="min-height:48px;font-size:18px;margin-top:6px">👀 Peek again</button></div>`}</div>
      <div class="slots">${L.map(()=>'<div class="slot"></div>').join('')}</div><div class="tiles">${tiles.map((t,k)=>`<button class="tile" data-k="${k}">${t.c}</button>`).join('')}</div><div class="feedback" id="fb"></div>`;
     $('#quit').onclick=()=>go({screen:'subj'});$('#spk').onclick=()=>say(w);
-    setTimeout(()=>{if(cur.screen==='game'&&GM===me)say(e?`Spell ${w}`:`Spell the word: ${w}`);},250);
+    if(!e){const wd=$('#wd'),hide=()=>{if(wd.isConnected)wd.textContent='❓';};setTimeout(hide,2600);$('#peek').onclick=()=>{wd.textContent=w.toUpperCase();setTimeout(hide,1500);};}
     const sl=[...app.querySelectorAll('.slot')];
     app.querySelectorAll('.tile').forEach((b,k)=>b.onclick=()=>{if(me.lock)return;const c=tiles[k].c;
       if(c===L[me.pos]){sfx.tap();b.classList.add('used');sl[me.pos].textContent=c;sl[me.pos].classList.add('f');me.pos++;
@@ -1033,7 +1023,7 @@ function kidSettings(p,ix){const g=prog(p.id);const subs=SUBJECTS.filter(s=>s.id
   return `<div class="field"><label>Weekly goal (rounds per week)</label><div class="stepper"><button class="iconbtn" data-gm="${ix}">−</button><span>${g.goal.rounds||'Off'}</span><button class="iconbtn" data-gp="${ix}">+</button></div></div>
   <div class="field"><label>Focus topics (Daily Quest leans toward these)</label><div class="avpick">${subs.map(s=>`<button ${pill} data-fo="${ix}" data-s="${s.id}" class="${g.goal.focus.includes(s.id)?'sel':''}">${s.icon} ${s.name}</button>`).join('')}</div></div>
   <div class="field"><label>Daily play limit</label><div class="stepper"><button class="iconbtn" data-lm="${ix}">−</button><span>${g.lim?g.lim+' min':'Off'}</span><button class="iconbtn" data-lp="${ix}">+</button>${g.lim?`<button class="btn ghost" style="min-height:46px;font-size:16px" data-lx="${ix}">+10 min today</button>`:''}</div><div class="note">Played today: ${Math.floor(ptToday(g).s/60)} min</div></div>
-  <div class="field"><label>Sound</label><div class="avpick">${[['voice','Read-aloud voice'],['sfx','Sound effects']].map(([k,l])=>`<button ${pill} data-tg="${ix}" data-k="${k}" class="${g.set[k]!==false?'sel':''}">${g.set[k]!==false?'On':'Off'}: ${l}</button>`).join('')}<button ${pill} data-sp="${ix}">Voice speed: ${g.set.rate<1?'Slow':g.set.rate>1?'Fast':'Normal'}</button></div></div>`;}
+  <div class="field"><label>Sound</label><div class="avpick">${[['sfx','Sound effects']].map(([k,l])=>`<button ${pill} data-tg="${ix}" data-k="${k}" class="${g.set[k]!==false?'sel':''}">${g.set[k]!==false?'On':'Off'}: ${l}</button>`).join('')}</div></div>`;}
 function bindKidSettings(sh,draft,draw){const G_=ix=>prog(draft[+ix].id);
   const step=(arr,v,d)=>arr[clamp(Math.max(0,arr.indexOf(v))+d,0,arr.length-1)];
   const on=(sel,fn)=>sh.querySelectorAll(sel).forEach(b=>b.onclick=()=>{fn(b);save();draw();});
@@ -1044,7 +1034,7 @@ function bindKidSettings(sh,draft,draw){const G_=ix=>prog(draft[+ix].id);
   on('[data-lp]',b=>{const g=G_(b.dataset.lp);g.lim=step(LIMS,g.lim,1);});
   on('[data-lx]',b=>{const g=G_(b.dataset.lx);ptToday(g).b+=600;});
   on('[data-tg]',b=>{const g=G_(b.dataset.tg);g.set[b.dataset.k]=g.set[b.dataset.k]===false;});
-  on('[data-sp]',b=>{const g=G_(b.dataset.sp);g.set.rate=step(RATES,g.set.rate,1)===g.set.rate?RATES[0]:step(RATES,g.set.rate,1);});}
+}
 
 // ---- hub home
 const subjTile=(p,s)=>{const i=subjInfo(p.id,s.id);return`<button class="subj chunky" data-s="${s.id}" style="--c:${s.col};--cb:${s.bg}"><div class="ic">${s.icon}</div><div class="tx"><div class="nm">${s.name}</div><div class="lvrow"><span class="lvchip">Level ${i.lvl}</span><span class="lv">${i.xp%LV} / ${LV} ⭐</span></div><div class="bar"><i style="width:${i.pct}%;background:${s.col}"></i></div></div></button>`;};
@@ -1934,7 +1924,6 @@ document.addEventListener('click',e=>{const q=e.target.closest&&e.target.closest
 // ---------- boot ----------
 render();
 (async()=>{try{if(!window.claude||!window.claude.use)return;
-  claude.use('tts').then(t=>{if(t)ttsCap=t;}).catch(()=>{});
   const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);if(!db||!user)return;
   const id=await user.id();if(!id)return;const doc=db.collection('data/users/'+id).doc('progress');
   let snap=null;try{snap=await doc.get();}catch(e){}
