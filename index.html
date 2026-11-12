@@ -362,15 +362,17 @@ const LS='brainQuest.v1';
 const AVATARS=['🦊','🦁','🐼','🐸','🦄','🐯','🐶','🐱','🐵','🐧','🦖','🐙','🐨','🦈','🐝','🚀'];
 const KCOLORS=['#FF7A59','#4C8DFF','#2BB673','#A35DFF','#FFB020','#FF5C8A'];
 function freshState(){return{profiles:[
-  {id:'a',name:'Explorer 1',age:5,avatar:'🦊',color:'#FF7A59'},
-  {id:'b',name:'Explorer 2',age:8,avatar:'🦁',color:'#4C8DFF'}],prog:{},updated:0};}
-function loadLocal(){try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.profiles)return s;}catch(e){}return null;}
+  {id:'a',name:'Elliott',age:5,avatar:'🦊',color:'#FF7A59'},
+  {id:'b',name:'Jackson',age:8,avatar:'🦁',color:'#4C8DFF'}],prog:{},updated:0};}
+// older saves used the placeholder names; swap them for the real ones (custom names are left alone)
+function fixNames(s){(s.profiles||[]).forEach(p=>{if(p.name==='Explorer 1')p.name='Elliott';else if(p.name==='Explorer 2')p.name='Jackson';});return s;}
+function loadLocal(){try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.profiles)return fixNames(s);}catch(e){}return null;}
 let S=loadLocal()||freshState();
 let dbDoc=null, remoteTimer=null;
 function save(){S.updated=Date.now();try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){}
   if(dbDoc){clearTimeout(remoteTimer);remoteTimer=setTimeout(async()=>{try{await dbDoc.set({state:JSON.stringify(S),updated:S.updated});}catch(e){}},1200);}}
 function P(id){return S.profiles.find(p=>p.id===id);}
-function prog(pid){if(!S.prog[pid])S.prog[pid]={stars:0,subj:{},acts:{},badges:[],rounds:0,perfect:0,mapWins:0};const g=S.prog[pid];if(!g.owned){g.owned=[];g.equip={};g.spent=0;g.streak={last:'',count:0,best:0};g.daily={};g.hist={};}if(!g.goal){g.goal={rounds:0,focus:[],claimed:''};g.goalsMet=0;g.set={voice:true,sfx:true,rate:1};g.pt={d:'',s:0,b:0};g.lim=0;}return g;}
+function prog(pid){if(!S.prog[pid])S.prog[pid]={stars:0,subj:{},acts:{},badges:[],rounds:0,perfect:0,mapWins:0};const g=S.prog[pid];if(!g.owned){g.owned=[];g.equip={};g.spent=0;g.streak={last:'',count:0,best:0};g.daily={};g.hist={};}if(!g.goal){g.goal={rounds:0,focus:[],claimed:''};g.goalsMet=0;g.set={voice:true,sfx:true,rate:1};g.pt={d:'',s:0,b:0};g.lim=0;}g.flagOK=g.flagOK||{};return g;}
 const young = p => p.age<=6;
 const LV=20; // xp per level
 function subjInfo(pid,sid){const s=prog(pid).subj[sid]||{xp:0};const lvl=1+Math.floor(s.xp/LV);return{xp:s.xp,lvl,pct:(s.xp%LV)/LV*100};}
@@ -575,7 +577,7 @@ function rPick(){app.innerHTML=`<div class="picker">
   <div class="logo">🧠<span class="spark">✨</span><br><span style="color:var(--orange)">Brain</span> <span style="color:var(--blue)">Quest</span></div>
   <div class="sub" style="font-size:26px">Who's playing today?</div>
   <div class="kids">${S.profiles.map(p=>{const g=prog(p.id);return`<button class="kid chunky" data-k="${p.id}">${avatar(p)}<div class="nm">${esc(p.name)}</div><div class="st"><span>⭐ ${bal(g)}</span>${streakInfo(g).count?`<span>🔥 ${streakInfo(g).count} day${streakInfo(g).count===1?'':'s'}</span>`:''}</div></button>`}).join('')}</div>
-  <button class="btn ghost" id="parent" style="font-size:18px;min-height:50px">⚙️ Grown-ups</button><div class="ver">Brain Quest Adventures · v1.9</div></div>`;
+  <button class="btn ghost" id="parent" style="font-size:18px;min-height:50px">⚙️ Grown-ups</button><div class="ver">Brain Quest Adventures · v1.10</div></div>`;
   app.querySelectorAll('.kid').forEach(b=>b.onclick=()=>{sfx.tap();const p=P(b.dataset.k);go({screen:'home',pid:p.id});say(`Hi ${p.name}! What do you want to learn today?`);});
   $('#parent').onclick=parentGate;}
 
@@ -589,7 +591,7 @@ function rSubj(){const p=P(cur.pid),s=SUBJECTS.find(x=>x.id===cur.sid),i=subjInf
   app.innerHTML=topbar(true)+`<div class="shead chunky" style="--c:${s.col};--cb:${s.bg}"><div class="ic">${s.icon}</div><div style="flex:1;min-width:0"><h2 class="title">${s.name}</h2>
     <div class="row" style="margin-top:4px"><span class="lvchip">Level ${i.lvl}</span><div class="bar"><i style="width:${i.pct}%;background:${s.col}"></i></div><span class="lv">${i.xp%LV} / ${LV} ⭐</span></div></div></div>
   <div class="acts">${actsFor(p,s.id).map((a,ix)=>{const rec=g.acts[actKey(a)]||{},best=rec.best||0;return`<button class="act chunky ${a.game==='boss'?'boss':''}" data-i="${ix}" style="--c:${s.col};--cb:${s.bg}"><div class="ic">${a.ic}</div>
-    <div class="tx"><div class="nm">${a.name}</div><div class="ds">${a.ds}</div>${a.map==='explore'?'':`<div class="stars">${rec.plays?starsHtml(best):'<span class="newtag">New</span>'}</div>`}</div></button>`}).join('')}</div>`;
+    <div class="tx"><div class="nm">${a.name}</div><div class="ds">${a.id==='flagsAll'?`${Object.keys(g.flagOK||{}).length} of 195 learned`:a.ds}</div>${a.map==='explore'?'':`<div class="stars">${rec.plays?starsHtml(best):'<span class="newtag">New</span>'}</div>`}</div></button>`}).join('')}</div>`;
   $('#back').onclick=()=>go({screen:'home'});
   const list=actsFor(p,s.id);
   app.querySelectorAll('.act').forEach(b=>b.onclick=()=>{sfx.tap();startAct(list[+b.dataset.i]);});}
@@ -616,11 +618,11 @@ function rQuiz(){const p=P(cur.pid),q=R.q,s=subjOf(R.a.s);const k=q.ch.length;co
   if(young(p))app.querySelectorAll('.choice').forEach(b=>{let t;b.addEventListener('touchstart',()=>{t=setTimeout(()=>{const c=q.ch[+b.dataset.i];if(c.l)say(c.l);},450);},{passive:true});b.addEventListener('touchend',()=>clearTimeout(t));});}
 const PRAISE=['Great job!','Awesome!','You got it!','Super!','Way to go!','Nice!','Brilliant!','Yes!'];
 function answer(i,el){if(R.lock)return;const q=R.q,fb=$('#fb');
-  if(i===q.a){R.lock=true;el.classList.add('ok');sfx.ok();if(R.tries===0){R.correct++;R.run=(R.run||0)+1;award(el);recAcc(q.act,true);}else R.run=0;
+  if(i===q.a){R.lock=true;el.classList.add('ok');sfx.ok();if(R.tries===0){R.correct++;R.run=(R.run||0)+1;award(el);recAcc(q.act,true);if(q.fk)prog(cur.pid).flagOK[q.fk]=1;}else R.run=0;
     app.querySelectorAll('.choice').forEach(b=>{if(b!==el)b.classList.add('dim');});
     const msg=pick(PRAISE);fb.className='feedback ok';fb.textContent=(R.run>=3?`🔥 ${R.run} in a row! `:'')+msg+(q.after?' '+q.after:'');say(msg+(q.after?' '+q.after:''));
     const r0=R;setTimeout(()=>{if(R!==r0||cur.screen!=='quiz')return;R.i++;if(R.i>=R.n)finish();else{nextQ();rQuiz();}},q.after?2200:1300);}
-  else{if(R.tries===0)recAcc(q.act,false);R.run=0;R.tries++;el.classList.add('bad');el.disabled=true;sfx.bad();fb.className='feedback bad';
+  else{if(R.tries===0){recAcc(q.act,false);if(q.fk)delete prog(cur.pid).flagOK[q.fk];}R.run=0;R.tries++;el.classList.add('bad');el.disabled=true;sfx.bad();fb.className='feedback bad';
     if(R.tries>=2){fb.textContent='Here it is!';app.querySelectorAll('.choice')[q.a].classList.add('hint');say('Not quite. Here is the answer.');}
     else{fb.textContent='Oops! Try again 💪';say('Try again!');}}}
 
@@ -743,8 +745,8 @@ function parentPanel(){const draft=JSON.parse(JSON.stringify(S.profiles));
    sh.querySelector('#prsb').onclick=()=>{const msg=sh.querySelector('#prsmsg');const b=sh.querySelector('#prsb');
      try{const r=JSON.parse(decodeURIComponent(escape(atob(sh.querySelector('#prs').value.trim()))));if(!r||!Array.isArray(r.profiles))throw 0;
        if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Tap again to replace current progress';b.style.color='var(--bad)';return;}
-       S=r;save();m.remove();render();}catch(e){msg.textContent='That code didn\'t work. Check you copied all of it.';}};
-   sh.querySelector('#psave').onclick=()=>{draft.forEach(p=>{if(!p.name.trim())p.name='Explorer';});S.profiles=draft;save();m.remove();render();};};
+       S=fixNames(r);save();m.remove();render();}catch(e){msg.textContent='That code didn\'t work. Check you copied all of it.';}};
+   sh.querySelector('#psave').onclick=()=>{draft.forEach((p,i)=>{if(!p.name.trim())p.name=['Elliott','Jackson'][i]||'Explorer';});S.profiles=draft;save();m.remove();render();};};
   draw();}
 
 // ================= v2 features: daily quest, shop, games, report, new activities =================
@@ -987,7 +989,7 @@ BADGES.push(
  {id:'goal1',b:'🎯',t:'Weekly Goal',test:g=>g.goalsMet>=1},
  {id:'fix1',b:'🛠️',t:'Tricky Fixer',test:g=>(g.rev||0)>=1});
 
-function poolFor(p){return ACTS.filter(a=>!a.map&&!a.game&&G[a.id]&&a.age.includes(young(p)?'y':'b'));}
+function poolFor(p){return ACTS.filter(a=>!a.map&&!a.game&&!a.noPool&&G[a.id]&&a.age.includes(young(p)?'y':'b'));}
 function startPlan(act,plan){const p=P(cur.pid);R={a:act,planActs:plan,plan:plan.map(a=>a.id),dl:plan.map(a=>subjInfo(p.id,a.s).lvl),d:1,n:plan.length,i:0,correct:0,tries:0,earned:0,q:null,lock:false,seen:new Set()};nextQ();go({screen:'quiz'});}
 function startDaily(){const p=P(cur.pid),g=prog(p.id);
   if(streakInfo(g).done){sfx.tap();say("You finished today's quest! Come back tomorrow.");return;}
@@ -997,7 +999,7 @@ function startDaily(){const p=P(cur.pid),g=prog(p.id);
   const rest=shuffle(pool.filter(a=>!first.includes(a))).sort((a,b)=>fs(b)-fs(a));
   startPlan(DAILY,first.concat(rest).slice(0,5));}
 function weakActs(p){const {acts}=accFor(prog(p.id));
-  return acts.filter(x=>x.n>=6&&x.c/x.n<.8&&G[x.a.id]&&!x.a.map&&!x.a.game&&x.a.age.includes(young(p)?'y':'b')).sort((a,b)=>a.c/a.n-b.c/b.n).slice(0,3).map(x=>x.a);}
+  return acts.filter(x=>x.n>=6&&x.c/x.n<.8&&G[x.a.id]&&!x.a.map&&!x.a.game&&!x.a.noPool&&x.a.age.includes(young(p)?'y':'b')).sort((a,b)=>a.c/a.n-b.c/b.n).slice(0,3).map(x=>x.a);}
 function startReview(){const p=P(cur.pid);const w=weakActs(p);
   if(!w.length){sfx.tap();say('Play a few more rounds first. Then I can find the tricky ones!');return;}
   const plan=[];for(let i=0;i<5;i++)plan.push(w[i%w.length]);startPlan(REVIEW,plan);}
@@ -1905,6 +1907,19 @@ ACTS.push(
  {id:'boss_read',s:'read',age:'yb',game:'boss',bs:'read',name:'Boss: Word Dragon',ic:'🐉',ds:'Beat the boss with reading'},
  {id:'boss_sci',s:'sci',age:'yb',game:'boss',bs:'sci',name:'Boss: Lab Alien',ic:'👽',ds:'Beat the boss with science'},
  {id:'boss_geo',s:'geo',age:'yb',game:'boss',bs:'geo',name:'Boss: Map Monster',ic:'🦖',ds:'Beat the boss with geography'});
+// ---------- All 195 flags ----------
+// 193 UN members + Vatican City + Palestine. Flag pictures come from the two-letter country codes.
+const WORLD_FLAGS=(()=>{const D={"Africa": "Algeria:DZ,Angola:AO,Benin:BJ,Botswana:BW,Burkina Faso:BF,Burundi:BI,Cabo Verde:CV,Cameroon:CM,Central African Republic:CF,Chad:TD,Comoros:KM,DR Congo:CD,Republic of the Congo:CG,Ivory Coast:CI,Djibouti:DJ,Egypt:EG,Equatorial Guinea:GQ,Eritrea:ER,Eswatini:SZ,Ethiopia:ET,Gabon:GA,Gambia:GM,Ghana:GH,Guinea:GN,Guinea-Bissau:GW,Kenya:KE,Lesotho:LS,Liberia:LR,Libya:LY,Madagascar:MG,Malawi:MW,Mali:ML,Mauritania:MR,Mauritius:MU,Morocco:MA,Mozambique:MZ,Namibia:NA,Niger:NE,Nigeria:NG,Rwanda:RW,São Tomé and Príncipe:ST,Senegal:SN,Seychelles:SC,Sierra Leone:SL,Somalia:SO,South Africa:ZA,South Sudan:SS,Sudan:SD,Tanzania:TZ,Togo:TG,Tunisia:TN,Uganda:UG,Zambia:ZM,Zimbabwe:ZW", "Asia": "Afghanistan:AF,Armenia:AM,Azerbaijan:AZ,Bahrain:BH,Bangladesh:BD,Bhutan:BT,Brunei:BN,Cambodia:KH,China:CN,Georgia:GE,India:IN,Indonesia:ID,Iran:IR,Iraq:IQ,Israel:IL,Japan:JP,Jordan:JO,Kazakhstan:KZ,Kuwait:KW,Kyrgyzstan:KG,Laos:LA,Lebanon:LB,Malaysia:MY,Maldives:MV,Mongolia:MN,Myanmar:MM,Nepal:NP,North Korea:KP,Oman:OM,Pakistan:PK,Palestine:PS,Philippines:PH,Qatar:QA,Saudi Arabia:SA,Singapore:SG,South Korea:KR,Sri Lanka:LK,Syria:SY,Tajikistan:TJ,Thailand:TH,Timor-Leste:TL,Türkiye:TR,Turkmenistan:TM,United Arab Emirates:AE,Uzbekistan:UZ,Vietnam:VN,Yemen:YE", "Europe": "Albania:AL,Andorra:AD,Austria:AT,Belarus:BY,Belgium:BE,Bosnia and Herzegovina:BA,Bulgaria:BG,Croatia:HR,Cyprus:CY,Czechia:CZ,Denmark:DK,Estonia:EE,Finland:FI,France:FR,Germany:DE,Greece:GR,Hungary:HU,Iceland:IS,Ireland:IE,Italy:IT,Latvia:LV,Liechtenstein:LI,Lithuania:LT,Luxembourg:LU,Malta:MT,Moldova:MD,Monaco:MC,Montenegro:ME,Netherlands:NL,North Macedonia:MK,Norway:NO,Poland:PL,Portugal:PT,Romania:RO,Russia:RU,San Marino:SM,Serbia:RS,Slovakia:SK,Slovenia:SI,Spain:ES,Sweden:SE,Switzerland:CH,Ukraine:UA,United Kingdom:GB,Vatican City:VA", "North America": "Antigua and Barbuda:AG,Bahamas:BS,Barbados:BB,Belize:BZ,Canada:CA,Costa Rica:CR,Cuba:CU,Dominica:DM,Dominican Republic:DO,El Salvador:SV,Grenada:GD,Guatemala:GT,Haiti:HT,Honduras:HN,Jamaica:JM,Mexico:MX,Nicaragua:NI,Panama:PA,Saint Kitts and Nevis:KN,Saint Lucia:LC,Saint Vincent and the Grenadines:VC,Trinidad and Tobago:TT,United States:US", "South America": "Argentina:AR,Bolivia:BO,Brazil:BR,Chile:CL,Colombia:CO,Ecuador:EC,Guyana:GY,Paraguay:PY,Peru:PE,Suriname:SR,Uruguay:UY,Venezuela:VE", "Oceania": "Australia:AU,Fiji:FJ,Kiribati:KI,Marshall Islands:MH,Micronesia:FM,Nauru:NR,New Zealand:NZ,Palau:PW,Papua New Guinea:PG,Samoa:WS,Solomon Islands:SB,Tonga:TO,Tuvalu:TV,Vanuatu:VU"};const out=[];
+  for(const k in D)D[k].split(',').forEach(it=>{const i=it.lastIndexOf(':'),n=it.slice(0,i),c=it.slice(i+1);out.push({n,k,f:String.fromCodePoint(...[...c].map(x=>127397+x.charCodeAt(0)))});});return out;})();
+// Level 1 mixes in far-away flags; higher levels use look-alike neighbours from the same continent. Little kids get 3 choices.
+G.flagsAll=d=>{const p=cur.pid&&P(cur.pid),yg=p&&young(p),ok=(p?prog(p.id).flagOK:null)||{};
+  const left=WORLD_FLAGS.filter(x=>!ok[x.n]),t=pick(left.length&&Math.random()<.7?left:WORLD_FLAGS);
+  const near=WORLD_FLAGS.filter(x=>x!==t&&x.k===t.k),far=WORLD_FLAGS.filter(x=>x!==t&&x.k!==t.k);
+  let o;if(yg)o=sample(WORLD_FLAGS.filter(x=>x!==t),2);
+  else{const k=Math.min(clamp(d,1,3),near.length);o=sample(near,k).concat(sample(far,3-k));}
+  const q=mk('Which country has this flag?',`<div class="flag">${t.f}</div>`,C(t.n),o.map(x=>C(x.n)));q.fk=t.n;return q;};
+ACTS.splice(ACTS.findIndex(a=>a.s==='geo'&&a.id==='flags')+1,0,{id:'flagsAll',s:'geo',age:'yb',noPool:true,name:'All 195 Flags',ic:'🚩',ds:'Every flag in the world'});
+
 // ---------- "stop playing?" check so a stray tap on ✕ doesn't end a round ----------
 let quitOK=false;
 document.addEventListener('click',e=>{const q=e.target.closest&&e.target.closest('#quit');if(!q||quitOK)return;
@@ -1925,7 +1940,7 @@ render();
   let snap=null;try{snap=await doc.get();}catch(e){}
   let d=snap&&(typeof snap.data==='function'?snap.data():(snap.data!==undefined?snap.data:snap));
   dbDoc=doc;
-  if(d&&d.state){const r=JSON.parse(d.state);if(r&&r.profiles&&(r.updated||0)>(S.updated||0)){S=r;try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){}if(cur.screen==='pick'||cur.screen==='home'){if(cur.pid&&!P(cur.pid))cur={screen:'pick',pid:null,sid:null};render();}}}
+  if(d&&d.state){const r=JSON.parse(d.state);if(r&&r.profiles&&(r.updated||0)>(S.updated||0)){S=fixNames(r);try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){}if(cur.screen==='pick'||cur.screen==='home'){if(cur.pid&&!P(cur.pid))cur={screen:'pick',pid:null,sid:null};render();}}}
   else if(S.updated)save();
 }catch(e){}})();
 </script>
